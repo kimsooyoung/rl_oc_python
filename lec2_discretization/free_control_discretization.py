@@ -110,10 +110,6 @@ class Simulator:
 
 
     def _animation_init(self):
-        """
-        init of the animation plot
-        """
-
         self._animation_ax.set_xlim(
             self.plant.workspace_range[0][0], self.plant.workspace_range[0][1]
         )
@@ -122,20 +118,6 @@ class Simulator:
         )
         self._animation_ax.set_xlabel("x position [m]")
         self._animation_ax.set_ylabel("y position [m]")
-        # for ap in self.animation_plots[:-1]:
-        #     ap.set_data([], [])
-        # self.animation_plots[-1].set_text("t = 0.000")
-
-        # self.tau_arrowarcs = []
-        # self.tau_arrowheads = []
-        # for link in range(self.plant.n_links):
-        #     arc, head = get_arrow(
-        #         radius=0.001, centX=0, centY=0, angle_=110, theta2_=320, color_="red"
-        #     )
-        #     self.tau_arrowarcs.append(arc)
-        #     self.tau_arrowheads.append(head)
-        #     self.animation_ax.add_patch(arc)
-        #     self.animation_ax.add_patch(head)
 
         return self._animation_plots
 
@@ -169,7 +151,7 @@ class Simulator:
         self.set_state(t0, x0)
         self.reset_data_recorder()
 
-        fig = plt.figure(figsize=(5, 5))
+        fig = plt.figure(1, figsize=(5, 5))
         self._animation_ax = plt.axes()
         self._animation_plots = []
 
@@ -197,12 +179,35 @@ class Simulator:
             frames=frames,
             init_func=self._animation_init,
             blit=True,
-            repeat=True,
+            repeat=False,
             interval=dt * 1000,
         )
         plt.show()
 
         return self.t_values, self.x_values, self.tau_values
+
+def plot_state(T, X, U):
+
+    plt.figure(2, figsize=(8, 5))
+
+    plt.subplot(3, 1, 1)
+    plt.plot(T, np.asarray(X).T[0], color='r', label=r'$\theta$')
+    plt.ylabel("angle [rad]")
+    plt.legend(loc="best")
+
+    plt.subplot(3, 1, 2)
+    plt.plot(T, np.asarray(X).T[1], color='g', label=r'$\dot{\theta}$')
+    plt.ylabel("angular velocity [rad/s]")
+    plt.legend(loc="best")
+
+    plt.subplot(3, 1, 3)
+    plt.plot(T, U, color='b', label=r'$u$')
+    plt.xlabel("time [s]")
+    plt.ylabel("input torque [Nm]")
+    plt.legend(loc="best")
+
+    plt.show()
+
 
 pendulum = Pendulum()
 sim = Simulator(plant=pendulum)
@@ -212,5 +217,8 @@ tf = 10.0
 
 T, X, U = sim.simulate_and_animate(
     t0=0.0, x0=[3.1, 0.0], tf=tf, dt=dt,
-    controller=None, integrator="runge_kutta"
+    controller=None, integrator="euler"
 )
+
+plot_state(T, X, U)
+
