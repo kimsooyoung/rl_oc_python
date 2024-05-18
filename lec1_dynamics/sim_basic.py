@@ -1,6 +1,11 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+
+platform = None 
+if os.name == 'nt':
+    platform = "Windows"
 
 l = 0.5
 
@@ -24,7 +29,11 @@ def update(frame):
     x = [0.0,  l*np.sin(frame)]
     y = [0.0, -l*np.cos(frame)]
     animation_plots[0].set_data(x, y)
-    animation_plots[1].set_data(x[1], y[1])
+    # for linux
+    if platform == "Windows":
+        animation_plots[1].set_data([x[1]], [y[1]])
+    else:
+        animation_plots[1].set_data(x[1], y[1])
     animation_plots[2].set_text(f"t = {frame}")
     return animation_plots
 
