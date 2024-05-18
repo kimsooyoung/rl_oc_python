@@ -1,6 +1,11 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+
+platform = None 
+if os.name == 'nt':
+    platform = "Windows"
 
 class Pendulum:
 
@@ -120,7 +125,10 @@ def update(par_dict):
     y = [0.0, ee_pos[1]]
 
     animation_plots[0].set_data(x, y)
-    animation_plots[1].set_data(ee_pos[0], ee_pos[1])
+    if platform == "Windows":
+        animation_plots[1].set_data([x[1]], [y[1]])
+    else:
+        animation_plots[1].set_data(x[1], y[1])
     animation_plots[2].set_text(f"t = {t}")
 
     state = new_state

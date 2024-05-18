@@ -29,7 +29,6 @@ def update(frame):
     x = [0.0,  l*np.sin(frame)]
     y = [0.0, -l*np.cos(frame)]
     animation_plots[0].set_data(x, y)
-    # for linux
     if platform == "Windows":
         animation_plots[1].set_data([x[1]], [y[1]])
     else:

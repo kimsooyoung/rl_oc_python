@@ -1,6 +1,11 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+
+platform = None 
+if os.name == 'nt':
+    platform = "Windows"
 
 class Pendulum:
 
@@ -24,6 +29,11 @@ class Pendulum:
 
         self.dof = 1
         self.n_actuators = 1
+        self.base = [0, 0]
+        self.workspace_range = [
+            [-1.2*self.l, 1.2*self.l],
+            [-1.2*self.l, 1.2*self.l]
+        ]
 
     def rhs(self, t, state, tau):
 
@@ -59,12 +69,15 @@ class Simulator:
 
         self.reset_data_recorder()
 
+    def set_state(self, time, x, step_counter=0):
+        self.x = np.copy(x)
+        self.t = np.copy(float(time))
+
     def reset_data_recorder(self):
         self.t_values = []
         self.x_values = []
         self.tau_values = []
         self.step_counter = 0
-        self._animation_plots = []
 
     def record_data(self, t, x, tau):
         self.t_values.append(np.copy(t))
@@ -81,7 +94,6 @@ class Simulator:
     def euler_integrator(self, t, x, tau):
         return self.plant.rhs(t, x, tau)
 
-    # def step(self, t, state, tau, dt, integrator="runge_kutta"):
     def step(self, tau, dt, integrator="runge_kutta"):
 
         if integrator == "runge_kutta":
@@ -96,7 +108,36 @@ class Simulator:
         self.t += dt
         self.record_data(self.t, self.x.copy(), tau)
 
-        return new_t, new_state
+
+    def _animation_init(self):
+        """
+        init of the animation plot
+        """
+
+        self._animation_ax.set_xlim(
+            self.plant.workspace_range[0][0], self.plant.workspace_range[0][1]
+        )
+        self._animation_ax.set_ylim(
+            self.plant.workspace_range[1][0], self.plant.workspace_range[1][1]
+        )
+        self._animation_ax.set_xlabel("x position [m]")
+        self._animation_ax.set_ylabel("y position [m]")
+        # for ap in self.animation_plots[:-1]:
+        #     ap.set_data([], [])
+        # self.animation_plots[-1].set_text("t = 0.000")
+
+        # self.tau_arrowarcs = []
+        # self.tau_arrowheads = []
+        # for link in range(self.plant.n_links):
+        #     arc, head = get_arrow(
+        #         radius=0.001, centX=0, centY=0, angle_=110, theta2_=320, color_="red"
+        #     )
+        #     self.tau_arrowarcs.append(arc)
+        #     self.tau_arrowheads.append(head)
+        #     self.animation_ax.add_patch(arc)
+        #     self.animation_ax.add_patch(head)
+
+        return self._animation_plots
 
     def _animation_step(self, par_dict):
 
@@ -105,17 +146,19 @@ class Simulator:
         integrator = par_dict["integrator"]
 
         self.step(0, dt, integrator=integrator)
-        ee_pos = self.plant.forward_kinematics(new_state[0])
+        ee_pos = self.plant.forward_kinematics(self.x[0])
 
         x = [0.0, ee_pos[0]]
         y = [0.0, ee_pos[1]]
 
         self._animation_plots[0].set_data(x, y)
-        self._animation_plots[1].set_data(ee_pos[0], ee_pos[1])
+        if platform == "Windows":
+            self._animation_plots[1].set_data([x[1]], [y[1]])
+        else:
+            self._animation_plots[1].set_data(x[1], y[1])
+        t = float(self._animation_plots[2].get_text()[4:])
+        t = round(t + dt, 3)
         self._animation_plots[2].set_text(f"t = {t}")
-
-        state = new_state
-        t = new_t
 
         return self._animation_plots
 
@@ -123,22 +166,23 @@ class Simulator:
         self, t0, x0, tf, dt, 
         controller=None, integrator="runge_kutta",
     ):
+        self.set_state(t0, x0)
         self.reset_data_recorder()
 
         fig = plt.figure(figsize=(5, 5))
-        animation_ax = plt.axes()
+        self._animation_ax = plt.axes()
+        self._animation_plots = []
 
-        animation_ax.set_xlim(-2, 2)
-        animation_ax.set_ylim(-2, 2)
-
-        line, = animation_ax.plot([], [], 'bo')
-        (bar_plot,) = animation_ax.plot([], [], "-", lw=5, color="black")
-        (ee_plot,) = animation_ax.plot([], [], "o", markersize=10.0, color="blue")
-        text_plot = animation_ax.text(0.15, 0.85, [], fontsize=10, transform=fig.transFigure)
+        line, = self._animation_ax.plot([], [], 'bo')
+        (bar_plot,) = self._animation_ax.plot([], [], "-", lw=5, color="black")
+        (ee_plot,) = self._animation_ax.plot([], [], "o", markersize=10.0, color="blue")
+        text_plot = self._animation_ax.text(0.15, 0.85, [], fontsize=10, transform=fig.transFigure)
 
         self._animation_plots.append(bar_plot)
         self._animation_plots.append(ee_plot)
+
         self._animation_plots.append(text_plot)
+        self._animation_plots[-1].set_text("t = 0.000")
 
         num_steps = int(tf / dt)
         par_dict = {}
@@ -149,11 +193,12 @@ class Simulator:
 
         self.animation = FuncAnimation(
             fig,
-            _animation_step,
+            self._animation_step,
             frames=frames,
+            init_func=self._animation_init,
             blit=True,
-            repeat=False,
-            interval=10,
+            repeat=True,
+            interval=dt * 1000,
         )
         plt.show()
 
